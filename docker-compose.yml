@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: docreview_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: docreview
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: docreview_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: docreview_n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=docreview
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD=postgres
+      - N8N_ENCRYPTION_KEY=change_this_to_a_long_random_value
+      - GENERIC_TIMEZONE=Asia/Kolkata
+    extra_hosts:
+      - "host.docker.internal:host-gateway"      
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  pg_data:
+  n8n_data:
