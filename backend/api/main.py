@@ -9,10 +9,33 @@ from backend.services.supabase_client import get_supabase_client
 from fastapi import UploadFile, File, Form
 from backend.services.document_service import DocumentService
 from backend.services.job_service import JobService
+from backend.services.extraction_service import ExtractionService
+from backend.services.grammar_check_service import GrammarCheckService
+from fastapi import Query
+from backend.services.review_read_service import ReviewReadService
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
 app = FastAPI(title="docreview-ai backend")
+## addind CORS as they both runs on diff ports  on the same machine
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8080",
+        "http://192.168.0.110:3000",
+        "http://192.168.0.110:5173",
+        "http://192.168.0.110:8080",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class CreateJobRequest(BaseModel):
     org_id: str
@@ -20,6 +43,12 @@ class CreateJobRequest(BaseModel):
     reference_document_id: str | None = None
     brand_rule_set_id: str | None = None
     created_by: str | None = None
+
+class ExtractDocumentRequest(BaseModel):
+    job_id: str
+
+class GrammarCheckRequest(BaseModel):
+    job_id: str
 
 # @app.get("/health")
 # def health():
@@ -149,4 +178,101 @@ async def upload_and_create_job(
         "ok": True,
         "document": document,
         "job": job
+    }
+
+@app.post("/jobs/extract-document")
+def extract_document(payload: ExtractDocumentRequest):
+    extraction_service = ExtractionService()
+    result = extraction_service.extract_document_for_job(payload.job_id)
+
+    return {
+        "ok": True,
+        "result": result
+    }
+
+@app.post("/jobs/run-grammar-check")
+def run_grammar_check(payload: GrammarCheckRequest):
+    supabase = get_supabase_client()
+
+    job_result = (
+        supabase
+        .table("review_jobs")
+        .select("*")
+        .eq("id", payload.job_id)
+        .limit(1)
+        .execute()
+    )
+
+    if not job_result.data:
+        raise ValueError("job not found")
+
+    job = job_result.data[0]
+
+    grammar_service = GrammarCheckService()
+
+    result = grammar_service.run_grammar_check(
+        job_id=payload.job_id,
+        document_id=job["document_id"]
+    )
+
+    supabase.table("review_jobs").update({
+        "current_stage": "grammar_done"
+    }).eq("id", payload.job_id).execute()
+
+    return {
+        "ok": True,
+        "result": result
+    }
+
+@app.get("/dashboard/summary")
+def get_dashboard_summary():
+    service = ReviewReadService()
+    result = service.get_dashboard_summary()
+
+    return {
+        "ok": True,
+        "summary": result
+    }
+
+@app.get("/review-jobs")
+def list_review_jobs(limit: int = Query(default=50, ge=1, le=200)):
+    service = ReviewReadService()
+    items = service.list_review_jobs(limit=limit)
+
+    return {
+        "ok": True,
+        "items": items
+    }
+
+@app.get("/review-jobs/{job_id}")
+def get_review_job(job_id: str):
+    service = ReviewReadService()
+    result = service.get_review_job_detail(job_id)
+
+    return {
+        "ok": True,
+        "data": result
+    }
+
+@app.get("/review-jobs/{job_id}/findings")
+def get_review_job_findings(job_id: str):
+    service = ReviewReadService()
+    items = service.get_job_findings(job_id)
+
+    return {
+        "ok": True,
+        "items": items
+    }
+
+@app.get("/documents/{document_id}/signed-url")
+def get_document_signed_url(
+    document_id: str,
+    expires_in: int = Query(default=3600, ge=60, le=86400)
+):
+    service = ReviewReadService()
+    result = service.create_signed_document_url(document_id=document_id, expires_in=expires_in)
+
+    return {
+        "ok": True,
+        "data": result
     }

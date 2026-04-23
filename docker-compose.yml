@@ -37,6 +37,7 @@ services:
       - DB_POSTGRESDB_PASSWORD=postgres
       - N8N_ENCRYPTION_KEY=change_this_to_a_long_random_value
       - GENERIC_TIMEZONE=Asia/Kolkata
+      - N8N_RESTRICT_FILE_ACCESS_TO=/files
     extra_hosts:
       - "host.docker.internal:host-gateway"      
     depends_on:
@@ -44,6 +45,7 @@ services:
       - redis
     volumes:
       - n8n_data:/home/node/.n8n
+      - /media/vicky/data/MyProd/docreview-ai/dataset:/files:ro
 
 volumes:
   pg_data:

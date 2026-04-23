@@ -6,3 +6,4 @@ boto3
 pydantic
 requests
 python-multipart
+pypdf
