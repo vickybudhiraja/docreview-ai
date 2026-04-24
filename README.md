@@ -2,19 +2,25 @@
 
 ## Core capabilities
 - Grammar and spelling checks
-- Brand/style enforcement
-- Verification against reference documents
+- Brand/style enforcement (using RAG)
+- Verification against reference documents (using RAG)
 - Checks for missing annotations, citations, & perform disclaimer checks
 - Structured issue severity
-- Reviewer comments on PDF, without editing original content
+- Reviewer comments on PDF
 - Human review & approval flow
 - Audit trail of who checked what, when, and why
 
 ## Core stack
-- n8n
+- N8n
+- Make
 - Supabase
 - FastAPI
-- AWS Bedrock
+- Lovable
+  - Vite + TypeScript
+- AWS Bedrock - Amazon Nova
+- RAG
+  - Amazon Bedrock Knowledge Bases
+  - OpenSearch Serverless as vector store
 
 ## Screenshots
 
